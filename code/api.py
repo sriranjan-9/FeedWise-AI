@@ -10,14 +10,6 @@ FeedWise polls this to read the current session state and render the
 diversity gauge + explanation log -- it never talks to Drift directly,
 only to this shared backend. That's the actual architecture of the pitch.
 
-Run with:  python3 api.py
-Then open drift.html and feedwise.html as two separate browser tabs.
-
-Endpoints:
-  GET  /api/recommend   -> next recommendation based on current session history
-  POST /api/watch       -> body {"post_id": "..."} logs that post as watched
-  GET  /api/state        -> current history, repetition score, and log (for FeedWise)
-  POST /api/reset        -> clears the session
 """
 
 from flask import Flask, request, jsonify
