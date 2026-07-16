@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InstaKilogram</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; background:#0B0713; overflow:hidden; }
+  body{ font-family:'Inter', sans-serif; color:#fff; }
+
+  #feed{
+    height:100%; width:100%;
+    overflow-y:scroll;
+    scroll-snap-type:y mandatory;
+    scrollbar-width:none;
+  }
+  #feed::-webkit-scrollbar{ display:none; }
+
+  .slide{
+    height:100%; width:100%;
+    scroll-snap-align:start;
+    position:relative;
+    display:flex; align-items:flex-end;
+    overflow:hidden;
+  }
+  .slide-bg{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .thumb-fg{
+    position:absolute; width:min(78vw, 340px); aspect-ratio:9/16;
+    border-radius:18px; overflow:hidden; box-shadow:0 20px 60px -10px rgba(0,0,0,.6);
+    display:flex; align-items:center; justify-content:center;
+    animation: slideIn .5s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes slideIn{
+    from{ opacity:0; transform:scale(.92) translateY(14px); }
+    to{ opacity:1; transform:scale(1) translateY(0); }
+  }
+
+  .slide.intervened .thumb-fg{ box-shadow:0 0 0 3px #FF6B5B, 0 20px 60px -10px rgba(255,107,91,.5); }
+
+  .scene{
+    position:relative; width:100%; height:100%; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .scene-icon{ font-size:56px; position:relative; z-index:2; filter:drop-shadow(0 4px 16px rgba(0,0,0,.4)); }
+
+  .scene-float .scene-icon{ animation: floatBounce 2.2s ease-in-out infinite; }
+  @keyframes floatBounce{
+    0%,100%{ transform:translateY(0) rotate(-4deg); }
+    50%{ transform:translateY(-18px) rotate(4deg); }
+  }
+  .scene-float .orb{ position:absolute; border-radius:50%; opacity:.5; animation: orbFloat 3s ease-in-out infinite; }
+  @keyframes orbFloat{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-14px);} }
+
+  .scene-orbit .orbit-ring{ position:absolute; border:1.5px dashed rgba(255,255,255,.25); border-radius:50%; }
+  .scene-orbit .orbit-dot{ position:absolute; width:10px; height:10px; border-radius:50%; animation: orbitSpin linear infinite; }
+  @keyframes orbitSpin{ from{ transform:rotate(0deg) translateX(70px) rotate(0deg); } to{ transform:rotate(360deg) translateX(70px) rotate(-360deg); } }
+
+  .scene-streaks .streak{ position:absolute; height:3px; border-radius:3px; animation: streakMove 1.6s linear infinite; opacity:0; }
+  @keyframes streakMove{
+    0%{ transform:translateX(-120%); opacity:0; }
+    15%{ opacity:.8; }
+    85%{ opacity:.8; }
+    100%{ transform:translateX(220%); opacity:0; }
+  }
+
+  .scene-bars .bar-row{ position:absolute; bottom:32%; display:flex; align-items:flex-end; gap:5px; }
+  .scene-bars .bar{ width:7px; border-radius:3px; animation: barPulse ease-in-out infinite; }
+  @keyframes barPulse{ 0%,100%{ transform:scaleY(.3); } 50%{ transform:scaleY(1); } }
+
+  .scene-shimmer .shimmer-sweep{
+    position:absolute; inset:-50%; background:linear-gradient(115deg, transparent 40%, rgba(255,255,255,.35) 50%, transparent 60%);
+    animation: shimmerSweep 2.4s ease-in-out infinite;
+  }
+  @keyframes shimmerSweep{ 0%{ transform:translateX(-60%); } 100%{ transform:translateX(60%); } }
+
+  .scene-ticker .ticker-strip{
+    position:absolute; bottom:30%; width:100%; white-space:nowrap; font-size:11px; font-weight:600;
+    letter-spacing:.08em; opacity:.7; animation: tickerScroll 6s linear infinite;
+  }
+  @keyframes tickerScroll{ from{ transform:translateX(100%); } to{ transform:translateX(-100%); } }
+
+  .scene-scan .grid-lines{
+    position:absolute; inset:0; opacity:.18;
+    background-image: linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+  .scene-scan .scan-line{
+    position:absolute; left:0; right:0; height:3px; opacity:.85;
+    animation: scanMove 2.2s ease-in-out infinite;
+  }
+  @keyframes scanMove{ 0%{ top:8%; } 50%{ top:88%; } 100%{ top:8%; } }
+
+  .progress-track{
+    position:absolute; top:8px; left:12px; right:12px; height:2.5px;
+    background:rgba(255,255,255,.25); border-radius:2px; z-index:5; overflow:hidden;
+  }
+  .progress-fill{ height:100%; width:0%; background:#fff; border-radius:2px; }
+  .slide.active .progress-fill{ animation: fillProgress 9s linear forwards; }
+  @keyframes fillProgress{ from{ width:0%; } to{ width:100%; } }
+
+  .view-count{
+    position:absolute; top:16px; left:16px; z-index:5;
+    display:flex; align-items:center; gap:5px;
+    font-size:11.5px; font-weight:600; color:rgba(255,255,255,.9);
+    background:rgba(0,0,0,.35); padding:4px 10px; border-radius:20px;
+    backdrop-filter: blur(4px);
+  }
+  .view-count svg{ width:12px; height:12px; }
+
+  .top-gradient{
+    position:absolute; top:0; left:0; right:0; height:120px;
+    background:linear-gradient(to bottom, rgba(0,0,0,.5), transparent);
+    z-index:2; pointer-events:none;
+  }
+  .header{
+    position:absolute; top:0; left:0; right:0; z-index:6;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:24px 18px 0;
+  }
+  .brand{ font-weight:700; font-size:19px; letter-spacing:-0.02em; display:flex; align-items:center; gap:8px; }
+  .header-right{ display:flex; align-items:center; gap:10px; }
+  .goal-chip{
+    font-size:10.5px; color:rgba(255,255,255,.75); background:rgba(255,255,255,.1);
+    padding:4px 10px; border-radius:20px; display:none; align-items:center; gap:5px;
+  }
+  .goal-chip.show{ display:flex; }
+  .goal-chip .dot{ width:5px; height:5px; border-radius:50%; background:#6EE7C0; }
+  .conn{ display:flex; align-items:center; gap:6px; font-size:11px; color:rgba(255,255,255,.6); }
+  .conn-dot{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.4); transition:background .2s; }
+  .conn-dot.live{ background:#6EE7C0; }
+  .mute-btn{
+    width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,.12);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .mute-btn svg{ width:15px; height:15px; }
+  .reset-feed-btn{
+    width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,.12);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    transition: transform .3s ease;
+  }
+  .reset-feed-btn:active{ transform:rotate(-180deg); }
+  .reset-feed-btn svg{ width:15px; height:15px; }
+
+  .bottom-gradient{
+    position:absolute; bottom:0; left:0; right:0; height:260px;
+    background:linear-gradient(to top, rgba(0,0,0,.85), transparent);
+    z-index:1; pointer-events:none;
+  }
+
+  .overlay{
+    position:relative; z-index:2; width:100%;
+    display:flex; align-items:flex-end; justify-content:space-between;
+    padding:0 14px 76px 16px; gap:10px;
+  }
+  .caption-col{ flex:1; min-width:0; padding-bottom:6px; }
+  .creator-row{ display:flex; align-items:center; gap:8px; margin-bottom:9px; flex-wrap:wrap; }
+  .avatar{ width:36px; height:36px; border-radius:50%; overflow:hidden; border:1.5px solid rgba(255,255,255,.85); flex-shrink:0; background:#222; }
+  .avatar img{ width:100%; height:100%; object-fit:cover; }
+  .username{ font-weight:600; font-size:14.5px; display:flex; align-items:center; gap:4px; }
+  .verified-badge{ width:14px; height:14px; flex-shrink:0; }
+  .timestamp{ font-size:12px; color:rgba(255,255,255,.55); font-weight:400; }
+  .follow-btn{
+    font-size:11.5px; font-weight:600; padding:4px 12px; border-radius:20px;
+    border:1.3px solid #fff; color:#fff; background:transparent; cursor:pointer;
+    transition: all .18s;
+  }
+  .follow-btn.following{ background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.4); color:rgba(255,255,255,.7); }
+  .cat-tag{
+    font-size:10.5px; color:rgba(255,255,255,.65); border:1px solid rgba(255,255,255,.3);
+    padding:1.5px 8px; border-radius:20px; margin-left:auto; text-transform:uppercase; letter-spacing:.03em;
+    flex-shrink:0;
+  }
+  .title{ font-size:14.5px; line-height:1.4; margin-bottom:8px; font-weight:500; }
+  .explain{
+    font-size:12px; color:rgba(255,255,255,.6); line-height:1.5;
+    display:flex; align-items:flex-start; gap:5px;
+  }
+  .explain.warn{ color:#FFB3A8; }
+  .intervene-badge{
+    display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600;
+    color:#FF6B5B; background:rgba(255,107,91,.14); padding:4px 10px; border-radius:20px;
+    margin-bottom:10px; width:fit-content;
+    animation: badgeIn .4s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes badgeIn{ from{ opacity:0; transform:translateX(-8px);} to{ opacity:1; transform:translateX(0);} }
+
+  .actions-col{
+    display:flex; flex-direction:column; align-items:center; gap:20px;
+    padding-bottom:56px; flex-shrink:0;
+  }
+  .action{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    cursor:pointer; user-select:none; position:relative;
+  }
+  .action-icon{
+    width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; transition: background .15s;
+  }
+  .action:active .action-icon{ background:rgba(255,255,255,.12); }
+  .action-icon svg{ width:27px; height:27px; transition:transform .15s; }
+  .action-label{ font-size:11px; color:rgba(255,255,255,.85); font-weight:500; }
+  .heart-path{ transition: fill .15s, stroke .15s; }
+  .liked .heart-path{ fill:#FF3B5C; stroke:#FF3B5C; }
+  .liked .action-icon svg{ animation:pop .4s cubic-bezier(.3,1.5,.5,1); }
+  @keyframes pop{ 0%{transform:scale(1);} 45%{transform:scale(1.4);} 100%{transform:scale(1);} }
+  .saved .save-path{ fill:#fff; stroke:#fff; }
+  .saved .action-icon svg{ animation:pop .35s ease; }
+  .spin-avatar{
+    width:34px; height:34px; border-radius:50%; overflow:hidden; border:2px solid rgba(255,255,255,.7);
+    animation: spin 4s linear infinite;
+  }
+  .spin-avatar img{ width:100%; height:100%; object-fit:cover; }
+  @keyframes spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
+
+  .heart-burst{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    pointer-events:none; z-index:4;
+  }
+  .heart-burst svg{ width:110px; height:110px; opacity:0; transform:scale(.4); }
+  .heart-burst.show svg{ animation: burstAnim .8s cubic-bezier(.2,1.4,.4,1) forwards; }
+  @keyframes burstAnim{
+    0%{ opacity:0; transform:scale(.4); }
+    25%{ opacity:1; transform:scale(1.15); }
+    45%{ opacity:1; transform:scale(1); }
+    100%{ opacity:0; transform:scale(1); }
+  }
+
+  .loading-slide{
+    height:100%; width:100%; display:flex; align-items:center; justify-content:center;
+    color:rgba(255,255,255,.5); font-size:13px; text-align:center; padding:0 30px; line-height:1.6;
+  }
+  .loading-slide b{ color:#fff; }
+
+  .skeleton{ height:100%; width:100%; display:flex; align-items:center; justify-content:center; }
+  .skeleton-card{
+    width:min(78vw,340px); aspect-ratio:9/16; border-radius:18px;
+    background: linear-gradient(100deg, #1a1230 30%, #241a44 50%, #1a1230 70%);
+    background-size: 200% 100%;
+    animation: shimmerLoad 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmerLoad{ 0%{ background-position: 200% 0; } 100%{ background-position: -200% 0; } }
+
+  .debug-banner{
+    position:fixed; bottom:0; left:0; right:0; z-index:50;
+    background:#3a0f0f; color:#ffd6d0; font-size:11px; font-family:monospace;
+    padding:10px 14px; line-height:1.5; max-height:35vh; overflow-y:auto;
+    border-top:2px solid #FF6B5B; display:none;
+  }
+  .debug-banner.show{ display:block; }
+
+  .bottom-nav{
+    position:absolute; bottom:0; left:0; right:0; z-index:8;
+    display:flex; align-items:center; justify-content:space-around;
+    padding:14px 10px 16px;
+  }
+  .nav-icon{ width:24px; height:24px; opacity:.55; transition:opacity .15s; }
+  .nav-icon.active{ opacity:1; }
+  .nav-icon svg{ width:100%; height:100%; }
+  .ambient-bg{
+    position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+  }
+  .ambient-blob{
+    position:absolute; border-radius:50%; filter:blur(100px); opacity:.28;
+    animation: ambientDrift 24s ease-in-out infinite;
+  }
+  @keyframes ambientDrift{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(30px,-20px) scale(1.1); }
+  }
+  #feed{ position:relative; z-index:1; }
+
+  .brand-mark{
+    width:22px; height:22px; border-radius:6px;
+    background:conic-gradient(from 210deg, #6EE7C0, #F2B84B 40%, #FF6B5B 75%, #6EE7C0);
+    animation: brandSpin 6s linear infinite;
+  }
+  @keyframes brandSpin{ from{ filter:hue-rotate(0deg);} to{ filter:hue-rotate(360deg);} }
+
+  .signature-tag{
+    position:absolute; bottom:64px; left:0; right:0; z-index:9;
+    text-align:center; font-size:9.5px; color:rgba(255,255,255,.4); pointer-events:none;
+  }
+  .signature-tag b{
+    background:linear-gradient(90deg, #6EE7C0, #F2B84B, #FF6B5B, #6EE7C0);
+    background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation: sigShimmer 5s linear infinite; font-weight:700;
+  }
+  @keyframes sigShimmer{ from{ background-position:0% 0; } to{ background-position:300% 0; } }
+</style>
+</head>
+<body>
+
+<div class="ambient-bg">
+  <div class="ambient-blob" style="width:400px;height:400px;background:#6EE7C0;top:-10%;left:-10%;"></div>
+  <div class="ambient-blob" style="width:360px;height:360px;background:#FF6B5B;bottom:0;right:-10%;animation-delay:-8s;"></div>
+  <div class="ambient-blob" style="width:320px;height:320px;background:#BE5ADC;bottom:20%;left:30%;animation-delay:-14s;"></div>
+</div>
+
+<div class="header">
+  <div class="brand"><div class="brand-mark"></div>InstaKilogram</div>
+  <div class="header-right">
+    <div class="goal-chip" id="goalChip"><span class="dot"></span><span id="goalChipText"></span></div>
+    <div class="conn"><span id="connLabel">connecting…</span><div class="conn-dot" id="connDot"></div></div>
+    <div class="reset-feed-btn" id="resetFeedBtn" onclick="resetFeedClient()" title="If the feed gets stuck, tap this — it only reloads this page, your FeedWise goals stay set">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 1 0 2.6-6.3" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><path d="M3 4v5h5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="mute-btn" id="muteBtn" onclick="toggleMute()">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 5V4L8 9H4z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/><path id="soundWave" d="M17 9a5 5 0 010 6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+</div>
+<div class="top-gradient"></div>
+
+<div id="feed"></div>
+
+<div class="bottom-nav">
+  <div class="nav-icon active"><svg viewBox="0 0 24 24" fill="none"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1v-9z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+  <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#fff" stroke-width="1.8"/><path d="M20 20l-4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+  <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="#fff" stroke-width="1.8"/><path d="M12 8v8M8 12h8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+  <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="14" height="14" rx="2" stroke="#fff" stroke-width="1.8"/><path d="M17 9l4-2v10l-4-2" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+  <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="#fff" stroke-width="1.8"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+</div>
+
+<div class="signature-tag">InstaKilogram · by <b>Sriranjan Balaji</b></div>
+
+<div class="debug-banner" id="debugBanner"></div>
+
+<script>
+const API = "http://localhost:5000";
+
+const SCENES = {
+  Comedy:    { type:'float',   icon:'😂', color:'#FFD65C' },
+  Cooking:   { type:'float',   icon:'🍳', color:'#FFB054' },
+  Academics: { type:'orbit',   icon:'🧪', color:'#5A8CEB' },
+  Tech:      { type:'orbit',   icon:'📱', color:'#5AC8DC' },
+  DIY:       { type:'orbit',   icon:'🔧', color:'#6EC8C8' },
+  Cars:      { type:'streaks', icon:'🚗', color:'#FFBE28' },
+  Edits:     { type:'streaks', icon:'🎬', color:'#FF3C64' },
+  Travel:    { type:'streaks', icon:'✈️', color:'#6ED2BE' },
+  Anime:     { type:'streaks', icon:'⛩️', color:'#FF5A8C' },
+  Music:     { type:'bars',    icon:'🎵', color:'#BE5ADC' },
+  Fitness:   { type:'bars',    icon:'🏋️', color:'#FF5C7A' },
+  Finance:   { type:'bars',    icon:'💰', color:'#5AC88C' },
+  Fashion:   { type:'shimmer', icon:'👗', color:'#FF96BE' },
+  Arts:      { type:'shimmer', icon:'🎨', color:'#EB8CBE' },
+  Pets:      { type:'float',   icon:'🐾', color:'#FFBE6E' },
+  News:      { type:'ticker',  icon:'📰', color:'#8CA0C8' },
+  Trending:  { type:'ticker',  icon:'🔥', color:'#FF5096' },
+  Gaming:    { type:'scan',    icon:'🎮', color:'#6EE7C0' },
+  Sports:    { type:'scan',    icon:'🏀', color:'#FF7A59' },
+  Science:   { type:'orbit',   icon:'🔬', color:'#64B4FF' },
+  History:   { type:'shimmer', icon:'📜', color:'#C8AA6E' },
+  BookTok:   { type:'float',   icon:'📚', color:'#B482E6' },
+  Motivation:{ type:'streaks', icon:'⚡', color:'#FFA046' },
+  Photography:{ type:'shimmer', icon:'📷', color:'#8C96A0' },
+  FoodReviews:{ type:'float',   icon:'🍜', color:'#FF8264' },
+};
+
+function buildScene(category){
+  const cfg = SCENES[category] || { type:'float', icon:'📱', color:'#8888aa' };
+  const c = cfg.color;
+  let extra = '';
+
+  if(cfg.type === 'float'){
+    extra = `
+      <div class="orb" style="width:60px;height:60px;background:${c};top:20%;left:15%;"></div>
+      <div class="orb" style="width:36px;height:36px;background:${c};bottom:22%;right:18%;animation-delay:.6s;"></div>`;
+  } else if(cfg.type === 'orbit'){
+    extra = `
+      <div class="orbit-ring" style="width:150px;height:150px;"></div>
+      <div class="orbit-dot" style="background:${c};animation-duration:3s;"></div>
+      <div class="orbit-dot" style="background:${c};opacity:.6;animation-duration:3s;animation-delay:-1.5s;"></div>`;
+  } else if(cfg.type === 'streaks'){
+    extra = [0,1,2].map(i => `<div class="streak" style="width:${70+i*20}px;background:${c};top:${30+i*18}%;animation-delay:${i*0.35}s;"></div>`).join('');
+  } else if(cfg.type === 'bars'){
+    const heights = [40,70,50,90,60,35];
+    const bars = heights.map((h,i) => `<div class="bar" style="height:${h}px;background:${c};animation-duration:${0.7+i*0.1}s;animation-delay:${i*0.08}s;"></div>`).join('');
+    extra = `<div class="bar-row">${bars}</div>`;
+  } else if(cfg.type === 'shimmer'){
+    extra = `<div class="shimmer-sweep"></div>`;
+  } else if(cfg.type === 'ticker'){
+    extra = `<div class="ticker-strip" style="color:${c};">${category.toUpperCase()} • LIVE UPDATES • ${category.toUpperCase()} • LIVE UPDATES •</div>`;
+  } else if(cfg.type === 'scan'){
+    extra = `<div class="grid-lines"></div><div class="scan-line" style="background:${c};box-shadow:0 0 12px ${c};"></div>`;
+  }
+
+  return `
+    <div class="scene scene-${cfg.type}" style="background:radial-gradient(circle at 50% 40%, ${c}22, #14101f 75%);">
+      ${extra}
+      <div class="scene-icon">${cfg.icon}</div>
+    </div>
+  `;
+}
+
+function timeAgo(isoString){
+  const then = new Date(isoString).getTime();
+  const now = Date.now();
+  const diffMs = Math.max(0, now - then);
+  const mins = Math.floor(diffMs / 60000);
+  if(mins < 60) return `${Math.max(1,mins)}m`;
+  const hrs = Math.floor(mins / 60);
+  if(hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if(days < 7) return `${days}d`;
+  return `${Math.floor(days/7)}w`;
+}
+
+function formatViews(engagementScore){
+  const base = engagementScore * 1500 + (engagementScore % 7) * 3000;
+  if(base >= 1000000) return (base/1000000).toFixed(1) + 'M';
+  if(base >= 1000) return (base/1000).toFixed(1) + 'K';
+  return base.toString();
+}
+
+function formatCount(n){
+  if(n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if(n >= 1000) return (n/1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function shareCountFor(post){
+  // deterministic per-post hash so refreshing doesn't change the number,
+  // but it's independent of the like/view formula -- shares are typically
+  // a much smaller fraction of views than likes are, on a real platform
+  let hash = 0;
+  const s = post.id + post.creator;
+  for(let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) % 100000;
+  const base = Math.round(post.engagement_score * 12 + (hash % 400));
+  return Math.max(3, base);
+}
+
+function isVerified(creator){
+  let hash = 0;
+  for(let i=0;i<creator.length;i++) hash = (hash * 31 + creator.charCodeAt(i)) % 1000;
+  return hash % 3 === 0;
+}
+
+let thumbMap = {};
+let watchedIds = new Set();
+let pendingIds = new Set();
+let isFetching = false;
+let muted = true;
+
+function showDebug(msg){
+  const el = document.getElementById('debugBanner');
+  el.classList.add('show');
+  el.textContent = '⚠ ' + msg;
+  console.error(msg);
+}
+
+function cacheBust(url){
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}_=${Date.now()}${Math.random()}`;
+}
+
+async function loadThumbMap(){
+  try{
+    const res = await fetch(cacheBust(`${API}/api/thumbnail_map`));
+    if(!res.ok) throw new Error(`thumbnail_map returned ${res.status}`);
+    thumbMap = await res.json();
+  }catch(e){
+    thumbMap = {};
+    showDebug('Could not load avatar thumbnails: ' + e.message);
+  }
+}
+
+async function refreshGoalChip(){
+  try{
+    const res = await fetch(cacheBust(`${API}/api/state`));
+    const data = await res.json();
+    if(data.goals && data.goals.length > 0){
+      document.getElementById('goalChipText').textContent = data.goals.join(' + ');
+      document.getElementById('goalChip').classList.add('show');
+    }else{
+      document.getElementById('goalChip').classList.remove('show');
+    }
+  }catch(e){}
+}
+setInterval(refreshGoalChip, 3000);
+
+function setConn(ok){
+  document.getElementById('connDot').className = 'conn-dot' + (ok ? ' live' : '');
+  document.getElementById('connLabel').textContent = ok ? 'connected' : 'offline';
+}
+
+function toggleMute(){
+  muted = !muted;
+  document.getElementById('soundWave').style.display = muted ? 'none' : 'block';
+}
+
+function resetFeedClient(){
+  // Deliberately just a page reload -- InstaKilogram never calls
+  // /api/reset, so this cannot touch FeedWise's stored goals or session
+  // history. It only clears this page's own client-side state (buffer,
+  // watched IDs, DOM) if anything got stuck, giving a clean restart
+  // without disconnecting from whatever FeedWise has set up.
+  location.reload();
+}
+
+function avatarSrc(post){
+  const file = thumbMap[post.id];
+  return file ? `thumbnails/${file}` : null;
+}
+
+function buildSlide(result){
+  const { post, explanation, intervention_triggered } = result;
+  const slide = document.createElement('div');
+  slide.className = 'slide' + (intervention_triggered ? ' intervened' : '');
+  slide.dataset.postId = post.id;
+
+  const avatar = avatarSrc(post);
+  const verified = isVerified(post.creator);
+  const views = formatViews(post.engagement_score);
+  const ago = timeAgo(post.timestamp);
+  const shareCount = shareCountFor(post);
+
+  slide.innerHTML = `
+    <div class="progress-track"><div class="progress-fill"></div></div>
+    <div class="view-count">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke="#fff" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="#fff" stroke-width="1.6"/></svg>
+      ${views}
+    </div>
+    <div class="slide-bg">
+      <div class="thumb-fg">${buildScene(post.category)}</div>
+      <div class="heart-burst" id="burst-${post.id}">
+        <svg viewBox="0 0 24 24" fill="#FF3B5C"><path d="M12 21s-7.5-4.6-10-9.1C.5 8.4 2 4.5 5.7 4.1c2-.2 3.7 1 4.9 2.6C11.8 5.1 13.5 3.9 15.5 4.1c3.7.4 5.2 4.3 3.7 7.8C19.5 16.4 12 21 12 21z"/></svg>
+      </div>
+    </div>
+    <div class="bottom-gradient"></div>
+    <div class="overlay">
+      <div class="caption-col">
+        ${intervention_triggered ? `<div class="intervene-badge">🔀 Diversifying your feed</div>` : ''}
+        <div class="creator-row">
+          <div class="avatar">${avatar ? `<img src="${avatar}" alt="">` : ''}</div>
+          <span class="username">@${post.creator}${verified ? `<svg class="verified-badge" viewBox="0 0 24 24" fill="#5FA8E0"><path d="M12 2l2.4 2.1 3.1-.4 1 3 2.9 1.3-.6 3.1 1.8 2.6-1.8 2.6.6 3.1-2.9 1.3-1 3-3.1-.4L12 22l-2.4-2.1-3.1.4-1-3-2.9-1.3.6-3.1L1.4 12l1.8-2.6-.6-3.1 2.9-1.3 1-3 3.1.4L12 2z"/><path d="M8.5 12.5l2.3 2.3 4.7-5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>` : ''}</span>
+          <span class="timestamp">${ago}</span>
+          <button class="follow-btn" onclick="toggleFollow(this)">Follow</button>
+          <span class="cat-tag">${post.category}</span>
+        </div>
+        <div class="title">${post.title}</div>
+        <div class="explain ${intervention_triggered ? 'warn' : ''}">${intervention_triggered ? '🔀' : '💡'} ${explanation}</div>
+      </div>
+      <div class="actions-col">
+        <div class="action" onclick="toggleLike(this, '${post.id}')">
+          <div class="action-icon">
+            <svg viewBox="0 0 24 24" fill="none"><path class="heart-path" d="M12 21s-7.5-4.6-10-9.1C.5 8.4 2 4.5 5.7 4.1c2-.2 3.7 1 4.9 2.6C11.8 5.1 13.5 3.9 15.5 4.1c3.7.4 5.2 4.3 3.7 7.8C19.5 16.4 12 21 12 21z" stroke="#fff" stroke-width="1.8"/></svg>
+          </div>
+          <div class="action-label" id="like-count-${post.id}" data-raw="${Math.round(post.engagement_score * 3.7)}">${formatCount(Math.round(post.engagement_score * 3.7))}</div>
+        </div>
+        <div class="action">
+          <div class="action-icon">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 8 6 8-16-8z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="action-label">${formatCount(shareCount)}</div>
+        </div>
+        <div class="action" onclick="toggleSave(this)">
+          <div class="action-icon">
+            <svg viewBox="0 0 24 24" fill="none"><path class="save-path" d="M6 4h12v17l-6-4-6 4V4z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="action-label">Save</div>
+        </div>
+        <div class="spin-avatar">${avatar ? `<img src="${avatar}" alt="">` : ''}</div>
+      </div>
+    </div>
+  `;
+
+  const mediaArea = slide.querySelector('.thumb-fg');
+  let lastTap = 0;
+  mediaArea.addEventListener('click', () => {
+    const now = Date.now();
+    if(now - lastTap < 300){
+      const likeBtn = slide.querySelector('.action');
+      if(!likeBtn.classList.contains('liked')) toggleLike(likeBtn, post.id);
+      const burst = document.getElementById(`burst-${post.id}`);
+      burst.classList.remove('show');
+      void burst.offsetWidth;
+      burst.classList.add('show');
+    }
+    lastTap = now;
+  });
+
+  return slide;
+}
+
+function toggleLike(el, postId){
+  const nowLiked = el.classList.toggle('liked');
+  const countEl = document.getElementById(`like-count-${postId}`);
+  const current = parseInt(countEl.dataset.raw, 10);
+  const updated = nowLiked ? current + 1 : current - 1;
+  countEl.dataset.raw = updated;
+  countEl.textContent = formatCount(updated);
+}
+function toggleSave(el){ el.classList.toggle('saved'); }
+function toggleFollow(el){
+  el.classList.toggle('following');
+  el.textContent = el.classList.contains('following') ? 'Following' : 'Follow';
+}
+
+async function fetchNext(){
+  const exclude = Array.from(pendingIds).join(',');
+  let url = `${API}/api/recommend`;
+  url = exclude ? `${url}?exclude=${exclude}` : url;
+  const res = await fetch(cacheBust(url), { cache: 'no-store' });
+  if(!res.ok) throw new Error(`/api/recommend returned ${res.status}`);
+  return await res.json();
+}
+
+async function markWatched(postId){
+  try{
+    await fetch(`${API}/api/watch`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ post_id: postId }),
+      cache: 'no-store'
+    });
+  }catch(e){
+    showDebug('Failed to log watch event: ' + e.message);
+  }
+}
+
+const PRELOAD_BUFFER = 4;
+let bufferAhead = 0; // how many fetched-but-not-yet-scrolled-past slides exist
+
+async function topUpBuffer(){
+  if(isFetching) return;
+  if(bufferAhead >= PRELOAD_BUFFER) return;
+  isFetching = true;
+  try{
+    const result = await fetchNext();
+    setConn(true);
+    pendingIds.add(result.post.id); // permanent client-side "never re-fetch this" set
+    bufferAhead++;
+    const slide = buildSlide(result);
+    document.getElementById('feed').appendChild(slide);
+  }catch(e){
+    setConn(false);
+    showDebug('Failed to fetch next post: ' + e.message);
+  }
+  isFetching = false;
+}
+
+setInterval(topUpBuffer, 350);
+
+let userScrolledRecently = false;
+let userScrollTimeout = null;
+let activeSlideSince = 0;
+const MIN_DWELL_MS = 1200; // don't count a "watch" (backend analytics) until it's genuinely been on screen a bit
+
+function updateActiveSlide(){
+  const feedEl = document.getElementById('feed');
+  const slides = feedEl.querySelectorAll('.slide');
+  const feedRect = feedEl.getBoundingClientRect();
+  let bestSlide = null, bestOverlap = 0;
+
+  slides.forEach(slide => {
+    const r = slide.getBoundingClientRect();
+    const overlap = Math.max(0, Math.min(r.bottom, feedRect.bottom) - Math.max(r.top, feedRect.top));
+    if(overlap > bestOverlap){ bestOverlap = overlap; bestSlide = slide; }
+  });
+
+  if(bestSlide && bestOverlap > feedRect.height * 0.6){
+    if(!bestSlide.classList.contains('active')){
+      setActiveSlide(bestSlide);
+      activeSlideSince = Date.now();
+      // BUG FIX: free up buffer capacity the instant the user scrolls onto a
+      // new slide -- regardless of dwell time. Previously this only happened
+      // after the 1.2s dwell gate below, which meant scrolling faster than
+      // 1.2s per reel could never free up buffer slots, so topUpBuffer's
+      // gate stayed permanently closed and new content stopped loading
+      // entirely. That's what "can't scroll past a point" actually was.
+      if(bufferAhead > 0) bufferAhead--;
+    }
+    const postId = bestSlide.dataset.postId;
+    const dwellOk = (Date.now() - activeSlideSince) >= MIN_DWELL_MS;
+    if(dwellOk && !watchedIds.has(postId)){
+      watchedIds.add(postId);
+      markWatched(postId);
+    }
+  }
+}
+setInterval(updateActiveSlide, 200);
+
+function autoAdvanceAfter(slide){
+  // Only auto-advance if the user hasn't touched the feed themselves
+  // recently -- a generous window, since fighting a manual scroll gesture
+  // with a programmatic one is worse than simply not auto-advancing once.
+  if(userScrolledRecently) return;
+  const feedEl = document.getElementById('feed');
+  feedEl.scrollBy({ top: feedEl.clientHeight, behavior: 'smooth' });
+}
+
+function setActiveSlide(slide){
+  document.querySelectorAll('.slide.active').forEach(s => {
+    if(s !== slide){
+      s.classList.remove('active');
+      const bar = s.querySelector('.progress-fill');
+      if(bar){ bar.style.animation = 'none'; bar.style.width = '0%'; }
+    }
+  });
+  if(!slide.classList.contains('active')){
+    slide.classList.add('active');
+    const bar = slide.querySelector('.progress-fill');
+    if(bar){
+      bar.style.animation = 'none';
+      void bar.offsetWidth;
+      bar.style.animation = 'fillProgress 9s linear forwards';
+      const handler = () => {
+        bar.removeEventListener('animationend', handler);
+        if(slide.classList.contains('active')) autoAdvanceAfter(slide);
+      };
+      bar.addEventListener('animationend', handler);
+    }
+  }
+}
+
+async function init(){
+  const feedEl = document.getElementById('feed');
+  feedEl.innerHTML = `<div class="skeleton"><div class="skeleton-card"></div></div>`;
+
+  feedEl.addEventListener('scroll', () => {
+    userScrolledRecently = true;
+    clearTimeout(userScrollTimeout);
+    userScrollTimeout = setTimeout(() => { userScrolledRecently = false; }, 2000);
+  }, { passive: true });
+
+  // keyboard fallback: arrow keys always work even if snap misbehaves
+  window.addEventListener('keydown', (e) => {
+    if(e.key === 'ArrowDown' || e.key === ' '){
+      e.preventDefault();
+      feedEl.scrollBy({ top: feedEl.clientHeight, behavior: 'smooth' });
+    }else if(e.key === 'ArrowUp'){
+      e.preventDefault();
+      feedEl.scrollBy({ top: -feedEl.clientHeight, behavior: 'smooth' });
+    }
+  });
+
+  await loadThumbMap();
+  await refreshGoalChip();
+
+  try{
+    const result = await fetchNext();
+    setConn(true);
+    pendingIds.add(result.post.id);
+    feedEl.innerHTML = '';
+    const first = buildSlide(result);
+    feedEl.appendChild(first);
+    setActiveSlide(first);
+    activeSlideSince = Date.now(); // BUG FIX: without this, the dwell gate
+    // was accidentally bypassed for the very first slide on every load,
+    // since updateActiveSlide only sets this when switching TO a new slide
+    // -- but the first slide is already marked active before that check
+    // ever runs, so it silently defaulted to 0 (instant dwell-pass).
+    bufferAhead = 1;
+  }catch(e){
+    setConn(false);
+    feedEl.innerHTML = `<div class="loading-slide">Can't reach the FeedWise backend.<br>Run <b>python3 api.py</b>, then reload this page.</div>`;
+    showDebug('Initial load failed: ' + e.message);
+    return;
+  }
+
+  for(let i = 0; i < PRELOAD_BUFFER - 1; i++){
+    await topUpBuffer();
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>

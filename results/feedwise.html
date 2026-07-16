@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FeedWise</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0A0A0F; --surface:#121218; --surface-2:#181820; --line:#232330;
+    --text:#F2F2F5; --muted:#7A7A8C; --mint:#5FE3C0; --coral:#FF6B5B; --gold:#F2C94C;
+    --text-soft:#DDDDE8; --warn-text:#C48A83;
+  }
+  html[data-theme="light"]{
+    --bg:#F7F7FA; --surface:#FFFFFF; --surface-2:#F0F0F4; --line:#E2E2EA;
+    --text:#16161C; --muted:#6B6B78; --mint:#1F9E7C; --coral:#E0503E; --gold:#B8860B;
+    --text-soft:#2A2A33; --warn-text:#A3392A;
+  }
+  html, body{ transition: background-color .25s ease, color .25s ease; }
+  * { transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background: var(--bg);
+    background-image:
+      radial-gradient(900px 500px at 90% -10%, rgba(95,227,192,.07), transparent 60%),
+      radial-gradient(700px 500px at -10% 100%, rgba(255,107,91,.05), transparent 60%);
+    background-attachment: fixed;
+    color:var(--text); font-family:'Inter', sans-serif;
+    min-height:100%;
+    position:relative;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  /* ================= animated mesh background + particles ================= */
+  .mesh-bg{
+    position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+  }
+  .mesh-blob{
+    position:absolute; border-radius:50%; filter:blur(90px); opacity:.35;
+    animation: meshDrift 22s ease-in-out infinite;
+  }
+  .blob-1{ width:480px; height:480px; background:#5FE3C0; top:-10%; left:-8%; animation-duration:24s; }
+  .blob-2{ width:420px; height:420px; background:#FF6B5B; top:30%; right:-12%; animation-duration:28s; animation-delay:-6s; }
+  .blob-3{ width:400px; height:400px; background:#BE5ADC; bottom:-15%; left:20%; animation-duration:26s; animation-delay:-12s; }
+  .blob-4{ width:340px; height:340px; background:#F2C94C; bottom:10%; right:15%; animation-duration:20s; animation-delay:-4s; opacity:.22; }
+  @keyframes meshDrift{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    25%{ transform:translate(40px,-30px) scale(1.08); }
+    50%{ transform:translate(-20px,30px) scale(.96); }
+    75%{ transform:translate(30px,20px) scale(1.04); }
+  }
+  .particle{
+    position:absolute; border-radius:50%; background:#fff; opacity:0;
+    animation: particleFloat linear infinite;
+  }
+  @keyframes particleFloat{
+    0%{ transform:translateY(0) translateX(0); opacity:0; }
+    10%{ opacity:.5; }
+    90%{ opacity:.3; }
+    100%{ transform:translateY(-100vh) translateX(30px); opacity:0; }
+  }
+  .app-content{ position:relative; z-index:1; }
+
+  /* signature credit */
+  .signature{
+    text-align:center; padding:26px 0 4px; font-size:12px; color:var(--muted);
+    letter-spacing:.02em;
+  }
+  .signature .sig-name{
+    font-weight:700; background:linear-gradient(90deg, #5FE3C0, #F2C94C, #FF6B5B, #5FE3C0);
+    background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation: sigShimmer 5s linear infinite;
+  }
+  @keyframes sigShimmer{ from{ background-position:0% 0; } to{ background-position:300% 0; } }
+
+  /* ================= onboarding: reddit-style pill picker ================= */
+  .onboard-overlay{
+    position:fixed; inset:0; z-index:100;
+    background:rgba(6,6,10,.92); backdrop-filter:blur(10px);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px; overflow-y:auto;
+    animation:fadeIn .3s ease;
+  }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  .onboard-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:22px;
+    padding:40px; max-width:560px; width:100%;
+    animation:cardIn .45s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes cardIn{ from{opacity:0; transform:translateY(18px) scale(.96);} to{opacity:1; transform:translateY(0) scale(1);} }
+  .onboard-mark{
+    width:42px; height:42px; border-radius:12px;
+    background:conic-gradient(from 210deg, var(--mint), var(--gold) 40%, var(--coral) 75%, var(--mint));
+    margin-bottom:20px;
+  }
+  .onboard-title{ font-size:24px; font-weight:800; margin-bottom:8px; letter-spacing:-0.015em; }
+  .onboard-sub{ font-size:13.5px; color:var(--muted); line-height:1.6; margin-bottom:20px; }
+
+  .search-box{
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface-2); border:1.5px solid var(--line); border-radius:12px;
+    padding:10px 14px; margin-bottom:18px;
+  }
+  .search-box svg{ width:15px; height:15px; flex-shrink:0; opacity:.5; }
+  .search-box input{
+    background:none; border:none; outline:none; color:var(--text); font-size:13.5px;
+    font-family:'Inter'; width:100%;
+  }
+  .search-box input::placeholder{ color:var(--muted); }
+
+  /* Reddit-style: flowing pill chips instead of a uniform grid */
+  .pill-cloud{ display:flex; flex-wrap:wrap; gap:9px; margin-bottom:8px; }
+  .pill-row{ display:flex; flex-wrap:wrap; gap:9px; margin-bottom:9px; }
+  .pill-expandable{ margin-bottom:9px; }
+  .pill-expand-arrow{ font-size:10px; opacity:.6; margin-left:1px; }
+  .subtopic-row{
+    display:flex; flex-wrap:wrap; gap:7px; margin:8px 0 2px 4px;
+    padding-left:14px; border-left:2px solid var(--line);
+    animation: subtopicIn .2s ease;
+  }
+  @keyframes subtopicIn{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:translateY(0); } }
+  .subtopic-chip{
+    font-size:11.5px; padding:6px 12px; border-radius:999px;
+    background:var(--surface); border:1.5px solid var(--line); cursor:pointer;
+    transition:all .15s; color:var(--muted); font-weight:500;
+  }
+  .subtopic-chip:hover{ border-color:#3a3a52; color:var(--text); }
+  .subtopic-chip.selected{ background:var(--gold); border-color:var(--gold); color:#2b2205; font-weight:700; }
+  .pill{
+    display:inline-flex; align-items:center; gap:7px;
+    background:var(--surface-2); border:1.5px solid var(--line); border-radius:999px;
+    padding:9px 16px 9px 12px; cursor:pointer; transition:all .15s;
+    font-size:13px; font-weight:500; white-space:nowrap;
+  }
+  .pill:hover{ border-color:#3a3a52; transform:translateY(-1px); }
+  .pill.selected{
+    background:var(--mint); border-color:var(--mint); color:#06231b; font-weight:700;
+  }
+  .pill.selected:hover{ transform:translateY(-1px) scale(1.02); }
+  .pill-emoji{ font-size:15px; }
+  .pill-check{
+    width:15px; height:15px; display:none; align-items:center; justify-content:center;
+    background:#06231b; border-radius:50%; flex-shrink:0;
+  }
+  .pill.selected .pill-check{ display:flex; animation: checkPop .25s cubic-bezier(.3,1.5,.5,1); }
+  @keyframes checkPop{ from{ transform:scale(0);} to{ transform:scale(1);} }
+  .pill-check svg{ width:9px; height:9px; }
+
+  .selection-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin:18px 0 20px; padding-top:16px; border-top:1px solid var(--line);
+  }
+  .selection-count{ font-size:12.5px; color:var(--muted); }
+  .selection-count b{ color:var(--mint); }
+
+  .onboard-submit{
+    width:100%; padding:14px; border-radius:12px; border:none; cursor:pointer;
+    background:var(--mint); color:#06231b; font-weight:700; font-size:14.5px;
+    font-family:'Inter'; transition:opacity .15s, transform .1s, box-shadow .15s;
+  }
+  .onboard-submit:disabled{ opacity:.3; cursor:not-allowed; }
+  .onboard-submit:not(:disabled):hover{ box-shadow:0 8px 24px -6px rgba(95,227,192,.45); }
+  .onboard-submit:not(:disabled):active{ transform:scale(.98); }
+  .onboard-skip{
+    display:block; text-align:center; margin-top:14px; font-size:12px;
+    color:var(--muted); cursor:pointer; background:none; border:none; font-family:'Inter';
+  }
+  .onboard-skip:hover{ color:var(--text); }
+
+  /* ================= top bar ================= */
+  .topbar{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:20px 32px; border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:center; gap:9px; }
+  .brand-mark{ width:20px; height:20px; border-radius:5px; background:var(--mint); animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
+  .brand-name{ font-size:16.5px; font-weight:700; letter-spacing:-0.01em; }
+  .conn{ display:flex; align-items:center; gap:6px; margin-left:12px; }
+  .conn-dot{ width:6px; height:6px; border-radius:50%; background:var(--muted); }
+  .conn-dot.live{ background:var(--mint); box-shadow:0 0 8px rgba(95,227,192,.6); }
+  .conn-label{ font-size:11.5px; color:var(--muted); }
+  .goal-badge{
+    margin-left:14px; font-size:11.5px; color:var(--mint); background:rgba(95,227,192,.1);
+    padding:4px 11px; border-radius:20px; display:none; align-items:center; gap:6px; cursor:pointer;
+    transition:background .15s;
+  }
+  .goal-badge.show{ display:flex; }
+  .goal-badge:hover{ background:rgba(95,227,192,.18); }
+  .session-timer{ font-size:11px; color:var(--muted); margin-left:14px; }
+  .header-btns{ margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .theme-toggle{
+    position:relative; width:52px; height:28px; border-radius:20px;
+    background:var(--surface-2); border:1px solid var(--line); cursor:pointer;
+    display:flex; align-items:center; padding:0 5px; justify-content:space-between;
+    flex-shrink:0;
+  }
+  .theme-toggle-icon{ font-size:11px; line-height:1; z-index:1; opacity:.8; }
+  .theme-toggle-knob{
+    position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%;
+    background:var(--mint); transition: transform .25s cubic-bezier(.3,1,.4,1); z-index:0;
+  }
+  html[data-theme="light"] .theme-toggle-knob{ transform:translateX(24px); }
+  .btn-ghost{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    padding:7px 14px; border-radius:7px; font-size:12.5px; cursor:pointer; font-family:'Inter';
+    transition:border-color .15s, background .15s, transform .1s;
+  }
+  .btn-ghost:hover{ border-color:#3A3A48; background:#1D1D26; }
+  .btn-ghost:active{ transform:scale(.96); }
+
+  /* ================= hero ================= */
+  .wrap{ max-width:960px; margin:0 auto; padding:32px 28px 60px; }
+
+  /* ================= splash intro ================= */
+  .splash{
+    position:fixed; inset:0; z-index:200; background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; animation: splashFadeOut .6s ease forwards; animation-delay:1.6s;
+  }
+  @keyframes splashFadeOut{ from{ opacity:1; visibility:visible; } to{ opacity:0; visibility:hidden; } }
+  .splash-mark{
+    width:56px; height:56px; border-radius:16px;
+    background:conic-gradient(from 210deg, var(--mint), var(--gold) 40%, var(--coral) 75%, var(--mint));
+    animation: splashSpin 1.6s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes splashSpin{
+    0%{ transform:scale(0) rotate(-90deg); opacity:0; }
+    50%{ transform:scale(1.15) rotate(10deg); opacity:1; }
+    100%{ transform:scale(1) rotate(0deg); }
+  }
+  .splash-name{
+    font-size:19px; font-weight:800; letter-spacing:-0.01em; opacity:0;
+    animation: splashTextIn .5s ease forwards; animation-delay:.5s;
+  }
+  .splash-tag{
+    font-size:12px; color:var(--muted); opacity:0;
+    animation: splashTextIn .5s ease forwards; animation-delay:.75s;
+  }
+  @keyframes splashTextIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+
+  /* ================= hero: animated gradient border ================= */
+  .hero{
+    position:relative;
+    display:grid; grid-template-columns:auto 1fr auto; gap:28px; align-items:center;
+    background:var(--surface); border:1px solid transparent; border-radius:18px;
+    padding:26px 28px; margin-bottom:20px;
+    background-clip:padding-box;
+  }
+  .hero::before{
+    content:''; position:absolute; inset:-1px; border-radius:19px; z-index:-1;
+    background:conic-gradient(from 0deg, #5FE3C0, #F2C94C, #FF6B5B, #BE5ADC, #5FE3C0);
+    animation: heroBorderSpin 6s linear infinite; opacity:.55;
+  }
+  @keyframes heroBorderSpin{ from{ filter:hue-rotate(0deg); } to{ filter:hue-rotate(360deg); } }
+  @media (max-width:680px){ .hero{ grid-template-columns:1fr; text-align:center; } }
+  .hero-gauge{ display:flex; align-items:center; gap:16px; }
+  .gauge-num{ font-size:38px; font-weight:800; line-height:1; transition:color .3s; }
+  .gauge-status{
+    display:inline-flex; align-items:center; gap:5px; margin-top:8px;
+    font-size:11.5px; font-weight:600; padding:3px 10px; border-radius:20px;
+    transition: background .3s, color .3s;
+  }
+  .status-diverse{ background:rgba(95,227,192,.12); color:var(--mint); }
+  .status-narrow{ background:rgba(255,107,91,.12); color:var(--coral); animation: alertPulse 1.6s ease-in-out infinite; }
+  @keyframes alertPulse{ 0%,100%{ opacity:1;} 50%{ opacity:.6;} }
+  .status-dot{ width:5px; height:5px; border-radius:50%; background:currentColor; }
+
+  .hero-stats{ display:flex; gap:32px; justify-content:center; }
+  .hero-stat-num{ font-size:26px; font-weight:800; line-height:1; margin-bottom:4px; transition:color .3s; }
+  .hero-stat-num.color-gold{ color: var(--gold); }
+  .hero-stat-num.color-coral{ color: var(--coral); }
+  .hero-stat-label{ font-size:11px; color:var(--muted); }
+
+  .hero-goals{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  @media (max-width:680px){ .hero-goals{ align-items:center; } }
+  .hero-goal-pills{ display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+  @media (max-width:680px){ .hero-goal-pills{ justify-content:center; } }
+  .hero-goal-pill{
+    font-size:10.5px; background:var(--surface-2); border:1px solid var(--line); border-radius:20px;
+    padding:3px 9px; color:var(--text);
+  }
+
+  /* ================= tab navigation ================= */
+  .tabs{ display:flex; gap:4px; margin-bottom:18px; border-bottom:1px solid var(--line); }
+  .tab-btn{
+    background:none; border:none; color:var(--muted); font-family:'Inter'; font-size:13.5px;
+    font-weight:600; padding:11px 18px; cursor:pointer; position:relative; transition:color .15s;
+  }
+  .tab-btn:hover{ color:var(--text); }
+  .tab-btn.active{ color:var(--text); }
+  .tab-underline{
+    position:absolute; bottom:-1px; left:0; height:2.5px;
+    background:linear-gradient(90deg, #5FE3C0, #F2C94C, #FF6B5B);
+    background-size:200% 100%; animation: underlineShift 4s linear infinite;
+    transition: left .3s cubic-bezier(.2,.9,.3,1), width .3s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes underlineShift{ from{ background-position:0% 0;} to{ background-position:200% 0;} }
+  .tab-panel{ display:none; animation: panelIn .3s ease; }
+  .tab-panel.active{ display:block; }
+  @keyframes panelIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:translateY(0);} }
+
+  /* ================= insights ================= */
+  .insights-card{
+    background:linear-gradient(135deg, rgba(95,227,192,.06), rgba(95,227,192,0) 60%);
+    border:1px solid var(--line); border-radius:16px; padding:26px; margin-bottom:16px;
+    position:relative; overflow:hidden;
+  }
+  .insights-header{ display:flex; align-items:center; gap:9px; margin-bottom:14px; }
+  .insights-icon{
+    width:22px; height:22px; border-radius:6px; flex-shrink:0;
+    background:linear-gradient(135deg, var(--mint), #3ab89a);
+    display:flex; align-items:center; justify-content:center; font-size:12px;
+    animation: iconFloat 3s ease-in-out infinite;
+  }
+  @keyframes iconFloat{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-2px);} }
+  .insights-label{ font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:600; }
+  .refresh-pulse{ width:6px; height:6px; border-radius:50%; background:var(--mint); margin-left:6px; opacity:0; }
+  .refresh-pulse.show{ animation: refreshBlip .8s ease; }
+  @keyframes refreshBlip{ 0%{opacity:0; transform:scale(.5);} 30%{opacity:1; transform:scale(1.4);} 100%{opacity:0; transform:scale(1);} }
+  .insights-summary{ font-size:14.5px; line-height:1.7; color:var(--text-soft); margin-bottom:16px; min-height:20px; }
+  .insights-summary .shimmer-placeholder{
+    height:14px; border-radius:4px; margin-bottom:8px;
+    background:linear-gradient(100deg, #1a1a24 30%, #24243096 50%, #1a1a24 70%);
+    background-size:200% 100%; animation:shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer{ 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+  .highlight-list{ display:flex; flex-direction:column; gap:8px; }
+  .highlight-item{
+    display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:var(--muted);
+    opacity:0; animation:itemIn .4s ease forwards;
+  }
+  @keyframes itemIn{ from{opacity:0; transform:translateX(-6px);} to{opacity:1; transform:translateX(0);} }
+  .highlight-dot{ width:4px; height:4px; border-radius:50%; background:var(--mint); margin-top:6px; flex-shrink:0; }
+
+  .sparkline-wrap{ margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+  .sparkline-label{ font-size:11px; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between; }
+  .sparkline-svg{ width:100%; height:52px; display:block; }
+
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:24px; transition: border-color .2s; margin-bottom:16px; }
+  .card:hover{ border-color:#2c2c3a; }
+  .card-label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:18px; font-weight:500; }
+
+  /* breakdown */
+  .breakdown-row{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .breakdown-row:last-child{ margin-bottom:0; }
+  .breakdown-label{ font-size:12.5px; width:150px; flex-shrink:0; color:var(--text); font-weight:500; display:flex; align-items:center; gap:6px; }
+  .breakdown-goal-star{ color:var(--gold); font-size:10px; }
+  .breakdown-track{ flex:1; height:9px; background:var(--surface-2); border-radius:5px; overflow:hidden; }
+  .breakdown-fill{
+    height:100%; border-radius:5px; width:0%;
+    background:linear-gradient(90deg, var(--mint), #3ab89a);
+    transition: width .7s cubic-bezier(.2,.9,.3,1);
+  }
+  .breakdown-fill.is-goal{ background:linear-gradient(90deg, var(--gold), #d4a72c); }
+  .breakdown-pct{ font-size:12px; color:var(--muted); width:36px; text-align:right; flex-shrink:0; font-family:'JetBrains Mono'; }
+
+  /* log */
+  .log-card{ padding:22px 0 6px; margin-bottom:0; }
+  .log-header{ display:flex; align-items:center; padding:0 24px 16px; }
+  .log-list{ max-height:460px; overflow-y:auto; }
+  .log-empty{ color:var(--muted); font-size:13px; padding:0 24px 20px; }
+  .log-item{
+    display:flex; align-items:flex-start; gap:11px; padding:12px 24px;
+    border-top:1px solid var(--line); font-size:13px;
+    animation:itemIn .3s ease; transition: background .15s;
+  }
+  .log-item:hover{ background:rgba(255,255,255,.02); }
+  .log-dot{ width:6px; height:6px; border-radius:50%; margin-top:6px; flex-shrink:0; }
+  .log-dot.normal{ background:var(--muted); }
+  .log-dot.intervene{ background:var(--coral); box-shadow:0 0 6px rgba(255,107,91,.5); }
+  .log-main{ flex:1; min-width:0; }
+  .log-title{ color:var(--text); font-weight:500; margin-bottom:2px; }
+  .log-title .tag{ color:var(--muted); font-weight:400; }
+  .log-explain{ color:var(--muted); font-size:12px; line-height:1.5; }
+  .log-explain.warn{ color:var(--warn-text); }
+  .log-score{ font-family:'JetBrains Mono'; color:var(--muted); font-size:12.5px; flex-shrink:0; padding-top:1px; }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:4px; }
+
+  /* ================= session wrapped modal ================= */
+  .wrapped-overlay{
+    position:fixed; inset:0; z-index:150; display:none;
+    align-items:center; justify-content:center; padding:24px;
+    background:rgba(6,6,10,.85); backdrop-filter:blur(8px);
+  }
+  .wrapped-overlay.show{ display:flex; animation:fadeIn .3s ease; }
+  .wrapped-card{
+    position:relative; width:100%; max-width:400px; border-radius:24px; padding:36px 30px;
+    background:linear-gradient(160deg, #1a1330, #0e0a1c 70%);
+    border:1px solid var(--line); overflow:hidden;
+    animation:cardIn .5s cubic-bezier(.2,.9,.3,1);
+  }
+  .wrapped-card::before{
+    content:''; position:absolute; inset:0; z-index:0; opacity:.4;
+    background:
+      radial-gradient(300px 200px at 80% 0%, rgba(95,227,192,.4), transparent 60%),
+      radial-gradient(280px 200px at 10% 100%, rgba(255,107,91,.35), transparent 60%),
+      radial-gradient(260px 200px at 90% 100%, rgba(242,201,76,.3), transparent 60%);
+    animation: wrappedGlow 8s ease-in-out infinite alternate;
+  }
+  @keyframes wrappedGlow{ from{ opacity:.3; } to{ opacity:.6; } }
+  .wrapped-inner{ position:relative; z-index:1; }
+  .wrapped-tag{ font-size:11px; text-transform:uppercase; letter-spacing:.14em; color:var(--mint); font-weight:700; margin-bottom:4px; }
+  .wrapped-title{ font-size:24px; font-weight:800; margin-bottom:24px; letter-spacing:-0.01em; }
+  .wrapped-persona{
+    text-align:center; margin-bottom:26px; padding:22px; border-radius:16px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+  }
+  .wrapped-persona-emoji{ font-size:40px; margin-bottom:8px; }
+  .wrapped-persona-name{
+    font-size:22px; font-weight:800; margin-bottom:6px;
+    background:linear-gradient(90deg, #5FE3C0, #F2C94C, #FF6B5B); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .wrapped-persona-desc{ font-size:12.5px; color:var(--muted); line-height:1.5; }
+  .wrapped-stats{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:26px; }
+  .wrapped-stat{ background:rgba(255,255,255,.04); border-radius:12px; padding:16px; text-align:center; }
+  .wrapped-stat-num{ font-size:26px; font-weight:800; font-family:'JetBrains Mono'; line-height:1; margin-bottom:6px; }
+  .wrapped-stat-label{ font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .wrapped-top{ text-align:center; margin-bottom:24px; }
+  .wrapped-top-label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+  .wrapped-top-cat{ font-size:20px; font-weight:800; }
+  .wrapped-close{
+    width:100%; padding:13px; border-radius:12px; border:none; cursor:pointer;
+    background:var(--mint); color:#06231b; font-weight:700; font-size:14px; font-family:'Inter';
+  }
+  .wrapped-btn{
+    background:linear-gradient(135deg, var(--mint), #3ab89a); color:#06231b;
+    border:none; padding:7px 16px; border-radius:7px; font-size:12.5px; font-weight:700;
+    cursor:pointer; font-family:'Inter'; transition:transform .1s, box-shadow .15s;
+  }
+  .wrapped-btn:hover{ box-shadow:0 6px 18px -6px rgba(95,227,192,.5); }
+  .wrapped-btn:active{ transform:scale(.96); }
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash">
+  <div class="splash-mark"></div>
+  <div class="splash-name">FeedWise</div>
+  <div class="splash-tag">by Sriranjan Balaji</div>
+</div>
+
+<div class="mesh-bg" id="meshBg">
+  <div class="mesh-blob blob-1"></div>
+  <div class="mesh-blob blob-2"></div>
+  <div class="mesh-blob blob-3"></div>
+  <div class="mesh-blob blob-4"></div>
+</div>
+
+<div class="app-content">
+
+<div class="onboard-overlay" id="onboardOverlay">
+  <div class="onboard-card">
+    <div class="onboard-mark"></div>
+    <div class="onboard-title">What are you here for today?</div>
+    <div class="onboard-sub">Pick what you're actually interested in — InstaKilogram's feed will start there, and FeedWise will show you honestly whether the algorithm keeps you on topic or pulls you somewhere else.</div>
+
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#fff" stroke-width="1.8"/><path d="M20 20l-4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" id="pillSearch" placeholder="Search interests…" oninput="filterPills(this.value)">
+    </div>
+
+    <div class="pill-cloud" id="goalGrid"></div>
+
+    <div class="selection-bar">
+      <div class="selection-count" id="selectionHint">Pick one or more</div>
+    </div>
+    <button class="onboard-submit" id="onboardSubmit" disabled onclick="submitGoal()">Start my feed</button>
+    <button class="onboard-skip" onclick="skipOnboarding()">Skip — just show me everything</button>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="brand"><div class="brand-mark"></div><div class="brand-name">FeedWise</div></div>
+  <div class="conn"><div class="conn-dot" id="connDot"></div><span class="conn-label" id="connLabel">connecting…</span></div>
+  <div class="goal-badge" id="goalBadge" onclick="reopenOnboarding()"><span id="goalBadgeText"></span> · change</div>
+  <div class="session-timer mono" id="sessionTimer"></div>
+  <div class="header-btns">
+    <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Switch light/dark mode">
+      <span class="theme-toggle-icon sun">☀️</span>
+      <span class="theme-toggle-knob" id="themeKnob"></span>
+      <span class="theme-toggle-icon moon">🌙</span>
+    </div>
+    <button class="wrapped-btn" onclick="showWrapped()">✨ Session Wrapped</button>
+    <button class="btn-ghost" onclick="resetSession()">Reset session</button>
+  </div>
+</div>
+
+<div class="wrapped-overlay" id="wrappedOverlay">
+  <div class="wrapped-card">
+    <div class="wrapped-inner" id="wrappedInner">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-gauge">
+      <svg width="64" height="64" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="38" fill="none" stroke="#1E1E28" stroke-width="7"/>
+        <circle id="gaugeArc" cx="45" cy="45" r="38" fill="none" stroke="#5FE3C0" stroke-width="7"
+                 stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="0"
+                 transform="rotate(-90 45 45)" style="transition: stroke-dashoffset .5s ease, stroke .3s ease;"/>
+      </svg>
+      <div>
+        <div class="gauge-num mono" id="gaugeNum">1.00</div>
+        <div class="gauge-status status-diverse" id="gaugeStatus"><span class="status-dot"></span>Healthy mix</div>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="hero-stat-num mono color-gold" id="watchedNum">0</div>
+        <div class="hero-stat-label">Posts watched</div>
+      </div>
+      <div>
+        <div class="hero-stat-num mono color-coral" id="interventionNum">0</div>
+        <div class="hero-stat-label">Interventions</div>
+      </div>
+    </div>
+    <div class="hero-goals">
+      <div class="hero-stat-label">Your interests</div>
+      <div class="hero-goal-pills" id="heroGoalPills"><span style="color:var(--muted); font-size:11px;">none set</span></div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="insights" onclick="switchTab('insights')">Insights</button>
+    <button class="tab-btn" data-tab="breakdown" onclick="switchTab('breakdown')">Breakdown</button>
+    <button class="tab-btn" data-tab="activity" onclick="switchTab('activity')">Activity</button>
+    <div class="tab-underline" id="tabUnderline"></div>
+  </div>
+
+  <div class="tab-panel active" id="panel-insights">
+    <div class="insights-card">
+      <div class="insights-header">
+        <div class="insights-icon">✨</div>
+        <div class="insights-label">Insights</div>
+        <div class="refresh-pulse" id="refreshPulse"></div>
+      </div>
+      <div class="insights-summary" id="insightsSummary">
+        <div class="shimmer-placeholder" style="width:100%;"></div>
+        <div class="shimmer-placeholder" style="width:88%;"></div>
+        <div class="shimmer-placeholder" style="width:64%;"></div>
+      </div>
+      <div class="highlight-list" id="highlightList"></div>
+      <div class="sparkline-wrap" id="sparklineWrap" style="display:none;">
+        <div class="sparkline-label"><span>Diversity over time</span><span id="sparklineLatest"></span></div>
+        <svg class="sparkline-svg" id="sparklineSvg" viewBox="0 0 300 52" preserveAspectRatio="none"></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-breakdown">
+    <div class="card breakdown-card" style="margin-bottom:0;">
+      <div class="card-label">Category breakdown</div>
+      <div id="breakdownList"><div class="log-empty" style="padding:0;">No activity yet.</div></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-activity">
+    <div class="card log-card">
+      <div class="log-header"><div class="card-label" style="margin-bottom:0;">Live activity</div></div>
+      <div class="log-list" id="log">
+        <div class="log-empty">Waiting for activity on InstaKilogram…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="signature">Built by <span class="sig-name">Sriranjan Balaji</span> · FeedWise</div>
+
+</div>
+</div>
+
+<script>
+const API = "http://localhost:5000";
+const THRESHOLD = 0.45;
+
+const CATEGORY_META = {
+  Comedy:    { emoji: "😂", label: "Comedy" },
+  Gaming:    { emoji: "🎮", label: "Gaming" },
+  Sports:    { emoji: "⚽", label: "Football & Sports" },
+  Academics: { emoji: "🧪", label: "Academics" },
+  Arts:      { emoji: "🎨", label: "Arts" },
+  Music:     { emoji: "🎵", label: "Music" },
+  Tech:      { emoji: "📱", label: "Tech" },
+  News:      { emoji: "📰", label: "News" },
+  Cooking:   { emoji: "🍳", label: "Cooking" },
+  Fitness:   { emoji: "🏋️", label: "Fitness" },
+  Fashion:   { emoji: "👗", label: "Fashion" },
+  Travel:    { emoji: "✈️", label: "Travel" },
+  Edits:     { emoji: "🎬", label: "Edits" },
+  Cars:      { emoji: "🚗", label: "Cars" },
+  Anime:     { emoji: "⛩️", label: "Anime" },
+  Pets:      { emoji: "🐾", label: "Pets & Animals" },
+  Finance:   { emoji: "💰", label: "Finance" },
+  DIY:       { emoji: "🔧", label: "DIY & Life Hacks" },
+  Trending:  { emoji: "🔥", label: "Trending Now" },
+  Science:   { emoji: "🔬", label: "Science" },
+  History:   { emoji: "📜", label: "History" },
+  BookTok:   { emoji: "📚", label: "Books & Reading" },
+  Motivation:{ emoji: "⚡", label: "Motivation" },
+  Photography:{ emoji: "📷", label: "Photography" },
+  FoodReviews:{ emoji: "🍜", label: "Food Reviews" },
+};
+
+let selectedGoals = new Set();
+let selectedSubtopics = new Set();
+let allTaxonomy = {};
+let insightsFetchInFlight = false;
+let lastInsightsWatchedCount = -1;
+let sessionStartTime = null;
+let currentGaugeValue = 1.0;
+let currentWatchedValue = 0;
+let currentInterventionValue = 0;
+let allCategories = [];
+
+function cacheBust(url){
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}_=${Date.now()}${Math.random()}`;
+}
+
+/* ============ tab switching ============ */
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${name}`));
+  positionTabUnderline();
+}
+function positionTabUnderline(){
+  const activeBtn = document.querySelector('.tab-btn.active');
+  const underline = document.getElementById('tabUnderline');
+  if(activeBtn){
+    underline.style.left = activeBtn.offsetLeft + 'px';
+    underline.style.width = activeBtn.offsetWidth + 'px';
+  }
+}
+
+/* ============ reddit-style pill goal picker, with expandable subtopics ============ */
+function pillHtml(cat){
+  const meta = CATEGORY_META[cat] || { emoji: "▫️", label: cat };
+  const isSelected = selectedGoals.has(cat);
+  const hasSubs = !!allTaxonomy[cat];
+  return `<div class="pill ${isSelected ? 'selected' : ''}" data-cat="${cat}" data-search="${meta.label.toLowerCase()}" onclick="togglePill('${cat}')">
+            <span class="pill-emoji">${meta.emoji}</span>
+            <span>${meta.label}</span>
+            ${hasSubs ? `<span class="pill-expand-arrow">${isSelected ? '▾' : '▸'}</span>` : ''}
+            <span class="pill-check"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#5FE3C0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </div>`;
+}
+
+function renderPills(categories){
+  const grid = document.getElementById('goalGrid');
+  const simple = categories.filter(c => !allTaxonomy[c]);
+  const expandable = categories.filter(c => allTaxonomy[c]);
+
+  let html = `<div class="pill-row">${simple.map(pillHtml).join('')}</div>`;
+
+  expandable.forEach(cat => {
+    const isSelected = selectedGoals.has(cat);
+    html += `<div class="pill-expandable">${pillHtml(cat)}`;
+    if(isSelected){
+      const subs = allTaxonomy[cat] || [];
+      html += `<div class="subtopic-row">` + subs.map(sub => {
+        const subSelected = selectedSubtopics.has(sub);
+        return `<div class="subtopic-chip ${subSelected ? 'selected' : ''}" data-search="${sub.toLowerCase()}" onclick="event.stopPropagation(); toggleSubtopic('${sub}')">${sub}</div>`;
+      }).join('') + `</div>`;
+    }
+    html += `</div>`;
+  });
+
+  grid.innerHTML = html;
+}
+
+async function buildGoalGrid(){
+  try{
+    const [catRes, taxRes] = await Promise.all([
+      fetch(cacheBust(`${API}/api/categories`)),
+      fetch(cacheBust(`${API}/api/taxonomy`)),
+    ]);
+    allCategories = await catRes.json();
+    allTaxonomy = await taxRes.json();
+    renderPills(allCategories);
+  }catch(e){
+    document.getElementById('goalGrid').innerHTML = '<div class="log-empty">Could not reach backend — is python3 api.py running?</div>';
+  }
+}
+
+function filterPills(query){
+  const q = query.toLowerCase().trim();
+  document.querySelectorAll('.pill').forEach(pill => {
+    const matches = !q || pill.dataset.search.includes(q) || pill.dataset.cat.toLowerCase().includes(q);
+    pill.closest('.pill-expandable') && (pill.closest('.pill-expandable').style.display = matches ? '' : 'none');
+    if(!pill.closest('.pill-expandable')) pill.style.display = matches ? 'inline-flex' : 'none';
+  });
+}
+
+function togglePill(cat){
+  if(selectedGoals.has(cat)){
+    selectedGoals.delete(cat);
+    // deselecting a category clears any subtopics that belonged to it --
+    // a subtopic without its parent category selected wouldn't make sense
+    const subs = allTaxonomy[cat] || [];
+    subs.forEach(s => selectedSubtopics.delete(s));
+  }else{
+    selectedGoals.add(cat);
+  }
+  renderPills(allCategories);
+  filterPills(document.getElementById('pillSearch').value);
+  updateSelectionUI();
+}
+
+function toggleSubtopic(sub){
+  if(selectedSubtopics.has(sub)) selectedSubtopics.delete(sub);
+  else selectedSubtopics.add(sub);
+  renderPills(allCategories);
+  filterPills(document.getElementById('pillSearch').value);
+}
+
+function updateSelectionUI(){
+  document.getElementById('onboardSubmit').disabled = selectedGoals.size === 0;
+  const hint = document.getElementById('selectionHint');
+  const subCount = selectedSubtopics.size;
+  hint.innerHTML = selectedGoals.size === 0
+    ? 'Pick one or more'
+    : `<b>${selectedGoals.size}</b> selected${subCount > 0 ? ` · <b>${subCount}</b> sub-topic${subCount > 1 ? 's' : ''} narrowed` : ''} — pick as many as you like`;
+}
+
+async function submitGoal(){
+  if(selectedGoals.size === 0) return;
+  const goals = Array.from(selectedGoals);
+  const subtopics = Array.from(selectedSubtopics);
+  try{
+    await fetch(`${API}/api/set_goal`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ goals, subtopics })
+    });
+  }catch(e){}
+  hideOnboarding();
+  showGoalBadge(goals, subtopics);
+  sessionStartTime = Date.now();
+  poll();
+  fetchInsights(true);
+}
+
+async function skipOnboarding(){
+  try{
+    await fetch(`${API}/api/set_goal`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ goals: [], subtopics: [] })
+    });
+  }catch(e){}
+  hideOnboarding();
+  document.getElementById('goalBadge').classList.remove('show');
+  sessionStartTime = Date.now();
+}
+
+function hideOnboarding(){
+  document.getElementById('onboardOverlay').style.display = 'none';
+}
+
+// ACCURACY FIX: reopening via the "change" badge used to blank the picker
+// back to zero, so it looked like changing your goal meant starting over
+// from nothing. Now it pre-selects whatever's currently active server-side,
+// so you're editing your real current state, not guessing at it again.
+async function reopenOnboarding(){
+  try{
+    const res = await fetch(cacheBust(`${API}/api/state`));
+    const data = await res.json();
+    selectedGoals = new Set(data.goals || []);
+    selectedSubtopics = new Set(data.subtopics || []);
+  }catch(e){}
+  renderPills(allCategories);
+  updateSelectionUI();
+  document.getElementById('pillSearch').value = '';
+  document.getElementById('onboardOverlay').style.display = 'flex';
+}
+
+function showGoalBadge(goals, subtopics){
+  subtopics = subtopics || [];
+  if(!goals || goals.length === 0){
+    document.getElementById('goalBadge').classList.remove('show');
+    document.getElementById('heroGoalPills').innerHTML = '<span style="color:var(--muted); font-size:11px;">none set</span>';
+    return;
+  }
+  const labels = goals.map(g => (CATEGORY_META[g] || {emoji:"▫️"}).emoji).join(' ');
+  const names = goals.map(g => (CATEGORY_META[g] || {label:g}).label).join(', ');
+  const subText = subtopics.length > 0 ? ` (${subtopics.join(', ')})` : '';
+  document.getElementById('goalBadgeText').textContent = `${labels} ${names}${subText}`;
+  document.getElementById('goalBadge').classList.add('show');
+
+  document.getElementById('heroGoalPills').innerHTML = goals.map(g => {
+    const meta = CATEGORY_META[g] || { emoji: "▫️", label: g };
+    return `<span class="hero-goal-pill">${meta.emoji} ${meta.label}</span>`;
+  }).join('') + subtopics.map(s => `<span class="hero-goal-pill" style="color:var(--gold); border-color:var(--gold);">${s}</span>`).join('');
+}
+
+function setConn(ok){
+  document.getElementById('connDot').className = 'conn-dot' + (ok ? ' live' : '');
+  document.getElementById('connLabel').textContent = ok ? 'connected' : 'offline';
+}
+
+function animateNumber(el, from, to, decimals, duration){
+  const start = performance.now();
+  function step(now){
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const val = from + (to - from) * eased;
+    el.textContent = decimals > 0 ? val.toFixed(decimals) : Math.round(val).toString();
+    if(t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderGauge(score){
+  const circumference = 238.76;
+  const offset = circumference * (1 - score);
+  const arc = document.getElementById('gaugeArc');
+  arc.setAttribute('stroke-dashoffset', offset);
+  const isDiverse = score >= THRESHOLD;
+  arc.setAttribute('stroke', isDiverse ? '#5FE3C0' : '#FF6B5B');
+  const numEl = document.getElementById('gaugeNum');
+  if(Math.abs(score - currentGaugeValue) > 0.001){
+    animateNumber(numEl, currentGaugeValue, score, 2, 500);
+    currentGaugeValue = score;
+  }
+  numEl.style.color = isDiverse ? 'var(--mint)' : 'var(--coral)';
+  const statusEl = document.getElementById('gaugeStatus');
+  statusEl.innerHTML = `<span class="status-dot"></span>${isDiverse ? 'Healthy mix' : 'Getting narrow'}`;
+  statusEl.className = 'gauge-status ' + (isDiverse ? 'status-diverse' : 'status-narrow');
+}
+
+function renderStats(watchedCount, log){
+  const watchedEl = document.getElementById('watchedNum');
+  if(watchedCount !== currentWatchedValue){
+    animateNumber(watchedEl, currentWatchedValue, watchedCount, 0, 400);
+    currentWatchedValue = watchedCount;
+  }
+  const interventions = log.filter(e => e.intervened).length;
+  const intEl = document.getElementById('interventionNum');
+  if(interventions !== currentInterventionValue){
+    animateNumber(intEl, currentInterventionValue, interventions, 0, 400);
+    currentInterventionValue = interventions;
+  }
+}
+
+function renderLog(entries){
+  const logEl = document.getElementById('log');
+  if(entries.length === 0){
+    logEl.innerHTML = '<div class="log-empty">Waiting for activity on InstaKilogram…</div>';
+    return;
+  }
+  logEl.innerHTML = entries.map(e => `
+    <div class="log-item">
+      <div class="log-dot ${e.intervened ? 'intervene' : 'normal'}"></div>
+      <div class="log-main">
+        <div class="log-title">${e.category} <span class="tag">· @${e.creator}</span></div>
+        <div class="log-explain ${e.intervened ? 'warn' : ''}">${e.explanation}</div>
+      </div>
+      <div class="log-score">${e.score.toFixed(2)}</div>
+    </div>
+  `).join('');
+}
+
+function renderBreakdown(breakdown){
+  const el = document.getElementById('breakdownList');
+  if(!breakdown || breakdown.length === 0){
+    el.innerHTML = '<div class="log-empty" style="padding:0;">No activity yet.</div>';
+    return;
+  }
+  el.innerHTML = breakdown.map(b => {
+    const meta = CATEGORY_META[b.category] || { emoji: "▫️", label: b.category };
+    return `
+      <div class="breakdown-row">
+        <div class="breakdown-label">${meta.emoji} ${meta.label}${b.is_goal ? ' <span class="breakdown-goal-star">★</span>' : ''}</div>
+        <div class="breakdown-track"><div class="breakdown-fill ${b.is_goal ? 'is-goal' : ''}" data-target="${b.share}" style="width:0%"></div></div>
+        <div class="breakdown-pct">${b.share}%</div>
+      </div>`;
+  }).join('');
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.breakdown-fill').forEach(bar => {
+      requestAnimationFrame(() => { bar.style.width = bar.dataset.target + '%'; });
+    });
+  });
+}
+
+function renderSparkline(scoreTrend){
+  const wrap = document.getElementById('sparklineWrap');
+  if(!scoreTrend || scoreTrend.length < 2){
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  const w = 300, h = 52, pad = 4;
+  const n = scoreTrend.length;
+  const points = scoreTrend.map((v, i) => {
+    const x = (i / (n - 1)) * (w - pad * 2) + pad;
+    const y = h - pad - v * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  const latest = scoreTrend[scoreTrend.length - 1];
+  const isDiverse = latest >= THRESHOLD;
+  const strokeColor = isDiverse ? '#5FE3C0' : '#FF6B5B';
+
+  const svg = document.getElementById('sparklineSvg');
+  svg.innerHTML = `
+    <polyline points="${points}" fill="none" stroke="${strokeColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="${pad}" y1="${h - pad - THRESHOLD * (h - pad*2)}" x2="${w - pad}" y2="${h - pad - THRESHOLD * (h - pad*2)}" stroke="#333" stroke-width="1" stroke-dasharray="3,3"/>
+  `;
+  document.getElementById('sparklineLatest').textContent = latest.toFixed(2);
+}
+
+function renderInsights(data){
+  const summaryEl = document.getElementById('insightsSummary');
+  summaryEl.innerHTML = `<span>${data.summary}</span>`;
+
+  const listEl = document.getElementById('highlightList');
+  listEl.innerHTML = data.highlights.map((h, i) => `
+    <div class="highlight-item" style="animation-delay:${i * 0.08}s">
+      <div class="highlight-dot"></div><div>${h}</div>
+    </div>
+  `).join('');
+
+  renderBreakdown(data.category_breakdown);
+  renderSparkline(data.score_trend);
+
+  const pulse = document.getElementById('refreshPulse');
+  pulse.classList.remove('show');
+  void pulse.offsetWidth;
+  pulse.classList.add('show');
+}
+
+async function fetchInsights(force){
+  if(insightsFetchInFlight) return;
+  insightsFetchInFlight = true;
+  try{
+    const res = await fetch(cacheBust(`${API}/api/insights`));
+    const data = await res.json();
+    renderInsights(data);
+  }catch(e){}
+  insightsFetchInFlight = false;
+}
+
+function updateSessionTimer(){
+  if(!sessionStartTime) return;
+  const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+  const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+  const secs = (elapsed % 60).toString().padStart(2, '0');
+  document.getElementById('sessionTimer').textContent = `${mins}:${secs}`;
+}
+
+async function poll(){
+  try{
+    const res = await fetch(cacheBust(`${API}/api/state`));
+    const data = await res.json();
+    renderGauge(data.repetition_score);
+    renderStats(data.history_length, data.log);
+    renderLog(data.log);
+    setConn(true);
+
+    showGoalBadge(data.goals || [], data.subtopics || []);
+    if(data.goals && data.goals.length > 0 && !sessionStartTime) sessionStartTime = Date.now();
+
+    if(data.history_length !== lastInsightsWatchedCount && data.history_length >= 3){
+      lastInsightsWatchedCount = data.history_length;
+      fetchInsights();
+    }
+  }catch(e){
+    setConn(false);
+  }
+}
+
+const PERSONA_EMOJI = {
+  "The Explorer": "🧭",
+  "The Balanced Viewer": "⚖️",
+  "The Deep Diver": "🤿",
+  "The Rabbit-Holer": "🕳️",
+};
+
+async function showWrapped(){
+  let data;
+  try{
+    const res = await fetch(cacheBust(`${API}/api/wrapped`));
+    data = await res.json();
+  }catch(e){
+    return;
+  }
+  const inner = document.getElementById('wrappedInner');
+  if(!data.ready){
+    inner.innerHTML = `
+      <div class="wrapped-tag">Session Wrapped</div>
+      <div class="wrapped-title">Not yet…</div>
+      <p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin-bottom:24px;">
+        Watch a few more posts on InstaKilogram first — your Wrapped needs a bit more activity to come to life.
+      </p>
+      <button class="wrapped-close" onclick="closeWrapped()">Got it</button>`;
+  }else{
+    const topMeta = CATEGORY_META[data.top_category] || { emoji:"▫️", label:data.top_category };
+    const personaEmoji = PERSONA_EMOJI[data.persona] || "✨";
+    inner.innerHTML = `
+      <div class="wrapped-tag">Your Session Wrapped</div>
+      <div class="wrapped-title">Here's how you scrolled ✨</div>
+
+      <div class="wrapped-persona">
+        <div class="wrapped-persona-emoji">${personaEmoji}</div>
+        <div class="wrapped-persona-name">${data.persona}</div>
+        <div class="wrapped-persona-desc">${data.persona_desc}</div>
+      </div>
+
+      <div class="wrapped-top">
+        <div class="wrapped-top-label">Your top category</div>
+        <div class="wrapped-top-cat">${topMeta.emoji} ${topMeta.label} · ${data.top_share}%</div>
+      </div>
+
+      <div class="wrapped-stats">
+        <div class="wrapped-stat">
+          <div class="wrapped-stat-num" style="color:var(--mint)">${data.total_watched}</div>
+          <div class="wrapped-stat-label">Posts watched</div>
+        </div>
+        <div class="wrapped-stat">
+          <div class="wrapped-stat-num" style="color:var(--gold)">${data.distinct_categories}</div>
+          <div class="wrapped-stat-label">Categories explored</div>
+        </div>
+        <div class="wrapped-stat">
+          <div class="wrapped-stat-num" style="color:var(--coral)">${data.interventions}</div>
+          <div class="wrapped-stat-label">Nudges from FeedWise</div>
+        </div>
+        <div class="wrapped-stat">
+          <div class="wrapped-stat-num" style="color:var(--mint)">${data.avg_diversity.toFixed(2)}</div>
+          <div class="wrapped-stat-label">Avg diversity</div>
+        </div>
+      </div>
+
+      <button class="wrapped-close" onclick="closeWrapped()">Close</button>`;
+  }
+  document.getElementById('wrappedOverlay').classList.add('show');
+}
+
+function closeWrapped(){
+  document.getElementById('wrappedOverlay').classList.remove('show');
+}
+
+async function resetSession(){
+  try{ await fetch(`${API}/api/reset`, { method: "POST" }); }catch(e){}
+  lastInsightsWatchedCount = -1;
+  currentGaugeValue = 1.0;
+  currentWatchedValue = 0;
+  currentInterventionValue = 0;
+  sessionStartTime = null;
+  document.getElementById('sessionTimer').textContent = '';
+  document.getElementById('goalBadge').classList.remove('show');
+  poll();
+  selectedGoals = new Set();
+  selectedSubtopics = new Set();
+  renderPills(allCategories);
+  updateSelectionUI();
+  document.getElementById('pillSearch').value = '';
+  document.getElementById('onboardOverlay').style.display = 'flex';
+}
+
+function applyTheme(theme){
+  document.documentElement.dataset.theme = theme;
+  try{ localStorage.setItem('feedwise-theme', theme); }catch(e){}
+}
+
+function toggleTheme(){
+  const current = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+  applyTheme(current === 'light' ? 'dark' : 'light');
+}
+
+function initTheme(){
+  let saved = 'dark';
+  try{ saved = localStorage.getItem('feedwise-theme') || 'dark'; }catch(e){}
+  document.documentElement.dataset.theme = saved;
+}
+
+async function init(){
+  initTheme();
+  spawnParticles();
+  await buildGoalGrid();
+  updateSelectionUI();
+  positionTabUnderline();
+
+  // BUG FIX: the onboarding overlay used to show on every single page load,
+  // even if goals were already set from a previous session. If you clicked
+  // through it again (even re-picking the exact same goals), submitGoal()
+  // calls /api/set_goal, which resets history server-side -- silently
+  // wiping out whatever InstaKilogram had already built up. Now we check
+  // first: only show onboarding if there's genuinely nothing set yet.
+  try{
+    const res = await fetch(cacheBust(`${API}/api/state`));
+    const data = await res.json();
+    if(data.goals && data.goals.length > 0){
+      selectedGoals = new Set(data.goals);
+      selectedSubtopics = new Set(data.subtopics || []);
+      hideOnboarding();
+      showGoalBadge(data.goals, data.subtopics || []);
+      sessionStartTime = Date.now();
+    }
+  }catch(e){}
+
+  poll();
+  setInterval(poll, 1200);
+  setInterval(updateSessionTimer, 1000);
+  window.addEventListener('resize', positionTabUnderline);
+}
+
+function spawnParticles(){
+  const colors = ['#5FE3C0', '#F2C94C', '#FF6B5B', '#BE5ADC', '#5AC8DC'];
+  const container = document.getElementById('meshBg');
+  for(let i = 0; i < 22; i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 2 + Math.random() * 3;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.bottom = '-10px';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animationDuration = (14 + Math.random() * 16) + 's';
+    p.style.animationDelay = (Math.random() * 16) + 's';
+    container.appendChild(p);
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
