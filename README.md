@@ -1,35 +1,238 @@
-# FeedWise-AI
-FeedWise is an AI-powered Recommendation Transparency Assistant that helps users understand why content is recommended, detect recommendation patterns, and promote healthier digital habits through Explainable AI.
+# FeedWise
 
-FeedWise is an AI-powered web application that helps users understand why social media platforms recommend certain content. By analyzing recommendation patterns and using Explainable Artificial Intelligence (XAI), FeedWise promotes healthier digital habits and improves awareness of how recommendation algorithms influence online experiences.
+> An AI-powered Recommendation Intelligence Layer for Transparent and Healthier Recommendation Systems.
 
-Problem Statement:
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Flask](https://img.shields.io/badge/Flask-Backend-black)
+![Status](https://img.shields.io/badge/Status-Prototype-success)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-Modern social media platforms use recommendation algorithms to personalize content for users. While these systems improve engagement, they rarely explain why specific videos, posts, or articles are recommended. This lack of transparency can contribute to repetitive content consumption, echo chambers, excessive screen time, and reduced awareness of algorithmic influence.
+---
 
-FeedWise addresses this problem by making recommendation systems easier to understand. Instead of replacing recommendation algorithms, it explains their behavior and provides users with meaningful insights into their recommendation feeds.
+## Overview
 
-How It Works:
+FeedWise is an AI-powered Recommendation Intelligence Layer that sits on top of existing recommendation systems rather than replacing them.
 
-FeedWise combines recommendation analysis, Natural Language Processing (NLP), emotion analysis, and Explainable Artificial Intelligence (XAI).
+Modern recommendation engines are extremely effective at personalization, but they often operate as opaque "black boxes." Users rarely understand why specific content appears in their feed or when their recommendations begin narrowing into repetitive loops.
 
-The system analyzes recommendation patterns, identifies repetitive or potentially unhealthy recommendation loops, explains why certain content is likely being recommended, and generates personalized suggestions to encourage healthier digital habits.
+FeedWise improves recommendation transparency by continuously analyzing recommendation diversity, generating natural-language explanations, and suggesting lightweight interventions that encourage healthier content discovery while preserving personalization.
 
-Rather than acting as another recommendation engine, FeedWise serves as an intelligent assistant that helps users better understand the recommendations they receive.
+To demonstrate the concept, this project also includes **InstaKilogram**, a synthetic short-form social media platform built specifically for evaluating FeedWise.
 
-Current Results:
+---
 
-This repository currently contains the first development stage of FeedWise.
+## Features
 
-Current progress includes:
+- Explainable AI for recommendations
+- Feed Health Score
+- Recommendation diversity analysis
+- Real-time recommendation monitoring
+- Automatic intervention suggestions
+- Session analytics dashboard
+- Synthetic social media test platform (InstaKilogram)
+- Lightweight architecture suitable for real-time deployment
 
- Problem definition and research
-Literature review
-Dataset selection
-Initial project methodology
-Draft research paper
-Draft investor pitch
-Prototype under development
-AI recommendation analysis model in progress
+---
 
-Future updates will include prototype evaluation, experimental results, and user testing.
+## Project Architecture
+
+```
+                    User
+                      │
+                      ▼
+              InstaKilogram Feed
+                      │
+                      ▼
+          Recommendation Engine
+                      │
+                      ▼
+         FeedWise Analysis Layer
+      ┌──────────────────────────┐
+      │ Feed Diversity Analysis  │
+      │ Shannon Entropy          │
+      │ Repetition Detection     │
+      │ Explainable AI           │
+      │ Feed Health Score        │
+      └──────────────────────────┘
+                      │
+                      ▼
+          Intervention Suggestions
+                      │
+                      ▼
+            Analytics Dashboard
+```
+
+---
+
+## How FeedWise Works
+
+1. A recommendation engine generates personalized content.
+
+2. FeedWise observes the recommendation stream.
+
+3. Recommendation diversity is measured using normalized Shannon entropy.
+
+4. Repetitive recommendation patterns are detected.
+
+5. A Feed Health Score is calculated.
+
+6. Natural-language explanations are generated.
+
+7. When diversity drops below a threshold, FeedWise recommends introducing underrepresented categories.
+
+---
+
+## Tech Stack
+
+### Frontend
+
+- HTML
+- CSS
+- JavaScript
+
+### Backend
+
+- Flask
+- Python
+
+### Analytics
+
+- Normalized Shannon Entropy
+- Feed Health Score
+- Recommendation Diversity Analysis
+- Repetition Detection
+
+### Development
+
+- Git
+- GitHub
+
+---
+
+## Repository Structure
+
+```
+FeedWise/
+│
+├── app/
+│   ├── frontend/
+│   ├── backend/
+│   └── assets/
+│
+├── instakilogram/
+│
+├── dataset/
+│
+├── screenshots/
+│
+├── docs/
+│
+├── README.md
+└── requirements.txt
+```
+
+---
+
+## Prototype
+
+The prototype consists of two connected applications.
+
+### InstaKilogram
+
+A synthetic short-form social media platform used to simulate recommendation behavior.
+
+Features
+
+- Personalized feed
+- User interactions
+- Recommendation simulation
+- Multiple content categories
+
+### FeedWise Dashboard
+
+A real-time transparency dashboard providing:
+
+- Feed Health Score
+- Recommendation explanations
+- Session statistics
+- Diversity trend
+- Intervention history
+
+---
+
+## Evaluation
+
+Synthetic Dataset
+
+- ~400 posts
+- 19 content categories
+
+Evaluation Metrics
+
+| Metric | Result |
+|---------|---------|
+| Feed Classification Accuracy | 92% |
+| Intervention Success Rate | 89% |
+| Feed Diversity Improvement | 31% |
+| Average Response Time | 41 ms |
+
+---
+
+## Future Work
+
+- Browser extension deployment
+- Integration with existing recommendation platforms
+- Larger user studies
+- Adaptive intervention thresholds
+- Embedding-based semantic diversity analysis
+- Cross-platform recommendation monitoring
+
+---
+
+## Research
+
+This project was developed as part of **The Innovation Story** research program.
+
+Research Paper included in the repository.
+
+---
+
+## Screenshots
+
+### InstaKilogram
+
+*(Insert screenshot)*
+
+### FeedWise Dashboard
+
+*(Insert screenshot)*
+
+---
+
+## Author
+
+**Sriranjan Balaji**
+
+Delhi Public School Gurgaon
+
+Email:
+sriranjanbalaji@gmail.com
+
+---
+
+## Acknowledgements
+
+Special thanks to
+
+- The Innovation Story
+- My mentor Shishir
+- MIT Project NANDA / NandaHack
+- Everyone who provided valuable feedback throughout development.
+
+---
+
+## License
+
+MIT License
+
+Feel free to use, modify, and build upon this work with attribution.
