@@ -3,11 +3,11 @@ FeedWise Prototype - Flask API
 ---------------------------------
 This is the shared backend that lets the two separate websites (drift.html
 and feedwise.html) work together, exactly like the real product concept:
-Drift is the platform, FeedWise is an independent layer sitting on top of it.
+InstaKilogram is the platform, FeedWise is an independent layer sitting on top of it.
 
-Drift calls this to get recommendations and log what the user "watched."
+InstaKilogram calls this to get recommendations and log what the user "watched."
 FeedWise polls this to read the current session state and render the
-diversity gauge + explanation log -- it never talks to Drift directly,
+diversity gauge + explanation log -- it never talks to InstaKilogram directly,
 only to this shared backend. That's the actual architecture of the pitch.
 
 Run with:  python3 api.py
@@ -43,6 +43,13 @@ ALL_POSTS = get_dataset("dataset.json")
 POSTS_BY_ID = {p["id"]: p for p in ALL_POSTS}
 AVAILABLE_CATEGORIES = sorted({p["category"] for p in ALL_POSTS})
 
+# category -> sorted list of subtopics that actually exist in the dataset
+TAXONOMY = {}
+for p in ALL_POSTS:
+    if "subtopic" in p:
+        TAXONOMY.setdefault(p["category"], set()).add(p["subtopic"])
+TAXONOMY = {cat: sorted(subs) for cat, subs in TAXONOMY.items()}
+
 try:
     with open("thumbnail_map.json") as f:
         THUMBNAIL_MAP = json.load(f)
@@ -54,7 +61,16 @@ SESSION = {
     "history": [],   # list of watched post dicts, oldest first
     "log": [],       # list of {post, explanation, intervened, score} for every watch event
     "goals": [],     # categories the user picked during onboarding (can be multiple), or []
+    "subtopics": [], # optional finer-grained picks within those categories (e.g. "Physics")
 }
+
+
+@app.route("/api/taxonomy", methods=["GET"])
+def taxonomy():
+    """Categories that support drilling into subtopics, and which subtopics
+    actually exist in the dataset -- so the goal picker never offers a
+    sub-interest with no content behind it."""
+    return jsonify(TAXONOMY)
 
 
 @app.route("/api/dataset", methods=["GET"])
@@ -85,10 +101,15 @@ def set_goal():
     if invalid:
         return jsonify({"error": f"unknown categories: {invalid}"}), 400
 
+    subtopics = body.get("subtopics", [])
+    valid_subs = {s for subs in TAXONOMY.values() for s in subs}
+    subtopics = [s for s in subtopics if s in valid_subs]
+
     SESSION["goals"] = goals
+    SESSION["subtopics"] = subtopics
     SESSION["history"] = []
     SESSION["log"] = []
-    return jsonify({"ok": True, "goals": goals})
+    return jsonify({"ok": True, "goals": goals, "subtopics": subtopics})
 
 
 @app.route("/api/thumbnail_map", methods=["GET"])
@@ -118,13 +139,13 @@ def recommend():
     else:
         candidate_posts = ALL_POSTS
 
-    result = get_next_recommendation(SESSION["history"], candidate_posts, goal_categories=SESSION["goals"])
+    result = get_next_recommendation(SESSION["history"], candidate_posts, goal_categories=SESSION["goals"], goal_subtopics=SESSION["subtopics"])
     return jsonify(result)
 
 
 @app.route("/api/watch", methods=["POST"])
 def watch():
-    """Drift calls this when a post scrolls into view and counts as watched."""
+    """InstaKilogram calls this when a post scrolls into view and counts as watched."""
     body = request.get_json(force=True)
     post_id = body.get("post_id")
     post = POSTS_BY_ID.get(post_id)
@@ -133,7 +154,7 @@ def watch():
 
     # recompute the recommendation result for logging purposes (explanation,
     # intervened flag, score) based on history BEFORE this watch
-    result = get_next_recommendation(SESSION["history"], ALL_POSTS, goal_categories=SESSION["goals"])
+    result = get_next_recommendation(SESSION["history"], ALL_POSTS, goal_categories=SESSION["goals"], goal_subtopics=SESSION["subtopics"])
 
     SESSION["history"].append(post)
     SESSION["log"].append({
@@ -151,14 +172,14 @@ def watch():
 @app.route("/api/state", methods=["GET"])
 def state():
     """FeedWise polls this to render the gauge + log. It only ever reads
-    from here -- it never talks to Drift directly."""
+    from here -- it never talks to InstaKilogram directly."""
     recent_window = SESSION["history"][-WINDOW_SIZE:]
     score = get_repetition_score(recent_window)
     return jsonify({
         "repetition_score": score,
         "history_length": len(SESSION["history"]),
         "log": list(reversed(SESSION["log"][-50:])),  # most recent first
-        "goals": SESSION["goals"],
+        "goals": SESSION["goals"], "subtopics": SESSION.get("subtopics", []),
     })
 
 
@@ -214,7 +235,7 @@ def wrapped():
         "avg_diversity": avg_score,
         "persona": persona,
         "persona_desc": persona_desc,
-        "goals": SESSION["goals"],
+        "goals": SESSION["goals"], "subtopics": SESSION.get("subtopics", []),
     })
 
 
@@ -223,6 +244,7 @@ def reset():
     SESSION["history"] = []
     SESSION["log"] = []
     SESSION["goals"] = []
+    SESSION["subtopics"] = []
     return jsonify({"ok": True})
 
 
